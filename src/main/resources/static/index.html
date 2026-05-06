@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Projetos</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Projetos</h1>
+            <p>Lista de projetos cadastrados e criação de novo projeto.</p>
+        </header>
+
+        <section class="card">
+            <h2>Inserir novo projeto</h2>
+            <form id="project-form">
+                <div class="field">
+                    <label for="descricao">Descrição</label>
+                    <input type="text" id="descricao" name="descricao" placeholder="Nome do projeto" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="field">
+                        <label for="dataInicio">Data de Início</label>
+                        <input type="date" id="dataInicio" name="dataInicio" required>
+                    </div>
+                    <div class="field">
+                        <label for="dataFim">Data de Fim</label>
+                        <input type="date" id="dataFim" name="dataFim">
+                    </div>
+                </div>
+
+                <div class="form-footer">
+                    <button type="submit">Salvar projeto</button>
+                    <p class="message" id="form-message"></p>
+                </div>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Projetos cadastrados</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Descrição</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                            <th>Funcionários</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projects-body">
+                        <tr><td colspan="5" class="empty">Carregando projetos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const form = document.getElementById('project-form');
+        const message = document.getElementById('form-message');
+        const body = document.getElementById('projects-body');
+
+        async function carregarProjetos() {
+            try {
+                const response = await fetch('/projetos');
+                if (!response.ok) throw new Error();
+                const projetos = await response.json();
+
+                if (projetos.length === 0) {
+                    body.innerHTML = '<tr><td colspan="5" class="empty">Nenhum projeto cadastrado.</td></tr>';
+                    return;
+                }
+
+                body.innerHTML = projetos.map(projeto => {
+                    const funcionarios = projeto.funcionarios?.length > 0
+                        ? projeto.funcionarios.map(f => f.nome).join(', ')
+                        : 'Nenhum vinculado';
+
+                    return `
+                        <tr>
+                            <td>#${projeto.id}</td>
+                            <td>${projeto.descricao}</td>
+                            <td>${projeto.dataInicio || '-'}</td>
+                            <td>${projeto.dataFim || '-'}</td>
+                            <td>${funcionarios}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch {
+                body.innerHTML = '<tr><td colspan="5" class="empty">Falha ao carregar projetos.</td></tr>';
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            message.textContent = '';
+
+            const descricao = document.getElementById('descricao').value.trim();
+            const dataInicio = document.getElementById('dataInicio').value;
+            const dataFim = document.getElementById('dataFim').value;
+
+            if (!descricao || !dataInicio) {
+                message.style.color = '#dc2626';
+                message.textContent = 'Preencha a descrição e a data de início.';
+                return;
+            }
+
+            try {
+                const response = await fetch('/projetos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ descricao, dataInicio, dataFim: dataFim || null })
+                });
+
+                if (!response.ok) throw new Error();
+
+                message.style.color = '#16a34a';
+                message.textContent = '✓ Projeto salvo com sucesso!';
+                form.reset();
+                carregarProjetos();
+            } catch {
+                message.style.color = '#dc2626';
+                message.textContent = '✕ Erro ao salvar o projeto.';
+            }
+        });
+
+        carregarProjetos();
+    </script>
+</body>
+</html>
